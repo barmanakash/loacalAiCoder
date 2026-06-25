@@ -1,0 +1,44 @@
+version: "3.9"
+
+# LocalCoder AI Agent — Docker Compose
+# Run: docker compose up -d
+#
+# NOTE: Ollama must be running on the host.
+# Set OLLAMA_HOST to your host machine IP when running in Docker.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8765:8765"
+    volumes:
+      - localcoder-data:/root/.localcoder
+      - ./:/workspace:ro  # Mount project for analysis
+    environment:
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      - API_HOST=0.0.0.0
+      - API_PORT=8765
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  localcoder-data:
+    driver: local
